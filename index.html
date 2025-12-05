@@ -387,6 +387,73 @@
   line-height: 1.6;
 }
 
+/* ===== 合言葉ログイン画面（ピンク系） ===== */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 230, 240, 0.9); /* ほんのりピンク */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.password-box {
+  background: white;
+  border-radius: 15px;
+  padding: 30px;
+  width: 85%;
+  max-width: 380px;
+  box-shadow: 0 0 18px rgba(255, 150, 190, 0.4);
+  text-align: center;
+  border: 2px solid #ffb3d9;
+}
+
+.pw-title {
+  color: #d95f9f;
+  font-size: 1.4rem;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+.pw-desc {
+  margin-bottom: 20px;
+  color: #aa4f78;
+}
+
+#academy-pass {
+  width: 80%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ff99cc;
+  margin-bottom: 15px;
+  font-size: 1rem;
+}
+
+.pw-btn {
+  background-color: #f78ab3;
+  color: white;
+  padding: 10px 25px;
+  border-radius: 8px;
+  font-size: 1rem;
+  border: none;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.pw-btn:hover {
+  background-color: #e86a9b;
+}
+
+.pw-error {
+  color: #e63963;
+  margin-top: 10px;
+  font-size: 0.9rem;
+}
+
 </style>
 
 </head>
@@ -504,6 +571,20 @@
       </div>
     </div>
   </section>
+
+<!-- ▼▼ アカデミー会員専用 合言葉ログイン ▼▼ -->
+<div id="password-overlay" class="overlay">
+  <div class="password-box">
+    <h2 class="pw-title">アカデミー会員専用</h2>
+    <p class="pw-desc">合言葉を入力してください。</p>
+
+    <input type="password" id="academy-pass" placeholder="合言葉を入力" />
+    <button id="pw-check-btn" class="pw-btn">ログイン</button>
+
+    <p id="pw-error" class="pw-error"></p>
+  </div>
+</div>
+
 </body>
 
 
@@ -1076,6 +1157,20 @@ btnUseLastHex.addEventListener('click', () => {
     hexTitle.textContent = `第${info.no}卦 ${info.name}`;
   } else {
     hexTitle.textContent = `卦番号「${currentMainHexNo}」はテーブル未登録です。`;
+  }
+});
+
+// ▼ 合言葉認証 ▼
+const correctPassword = "kamunagara";
+
+document.getElementById("pw-check-btn").addEventListener("click", () => {
+  const pass = document.getElementById("academy-pass").value;
+  const error = document.getElementById("pw-error");
+
+  if (pass === correctPassword) {
+    document.getElementById("password-overlay").style.display = "none";
+  } else {
+    error.textContent = "合言葉が違います。";
   }
 });
 
