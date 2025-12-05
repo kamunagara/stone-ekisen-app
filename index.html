@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Antique&display=swap" rel="stylesheet">
+
+  <meta charset="UTF-8">
+  <title>石投げ易占 - 卦を立てる</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Segoe UI", sans-serif;
+    margin: 0;
+    padding: 0;
+    /* 背景：白一色*/
+    background:#ffffff ;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+  }
+
+  h1 {
+    font-size: 1.4rem;
+    margin: 0.8rem 0 0.3rem;
+  }
+
+  .subtitle {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 0.7rem;
+    text-align: center;
+  }
+
+  #board-container {
+    position: relative;
+    width: min(90vw, 360px);
+    aspect-ratio: 1 / 1;
+    margin-top: 0.5rem;
+    border-radius: 1rem;
+    overflow: hidden;
+     background: radial-gradient(circle at top,
+    #fff7fb 0%,   /* ごく淡いピンク */
+    #ffffff 55%,  /* 真ん中は白 */
+    #ffeef5 100%  /* ふちが少しだけピンク */
+  );
+  box-shadow: 0 18px 40px rgba(255, 160, 190, 0.35); /* 影も少しピンク寄りに */
+}
+
+  #board-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+/* 宝珠（下：楕円） */
+#center-jewel {
+  position: absolute;
+  left: 50%;
+  top: 51%;
+  width: 78px;                /* 少し横幅を増やす */
+  height: 60px;               /* 縦は控えめに */
+  transform: translate(-50%, -50%);
+  border-radius: 50% / 70%;   /* 自然な縦長 */
+  background: #f4c542;
+  pointer-events: none;
+}
+
+/* 宝珠の“後光” */
+#center-jewel::after {
+  content: "";
+  position: absolute;
+  inset: -20px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(244, 197, 66, 0.6) 0%,
+    rgba(244, 197, 66, 0.0) 70%
+  );
+  z-index: -1;
+}
+
+/* 宝珠（上：ひし形） */
+#center-jewel::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 46%;              /* 楕円にしっかり重なる */
+  width: 44px;              /* 過度に細くしない */
+  height: 44px;
+  transform: translateX(-50%) rotate(45deg);
+  border-radius: 12%;
+  background: #f4c542;
+  pointer-events: none;
+}
+
+
+  /* 石 */
+  .stone {
+    position: absolute;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(0,0,0,0.35);
+    border: 2px solid rgba(255,255,255,0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    pointer-events: none;
+    transition: transform 0.4s ease-out;
+    text-shadow: 0 0 3px rgba(0,0,0,0.4);
+  }
+
+  #controls {
+    margin-top: 0.8rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 1rem 1.4rem;
+  }
+
+  button {
+    padding: 0.6rem 1.6rem;
+    border-radius: 999px;
+    border: none;
+    font-size: 0.95rem;
+    font-weight: 600;
+    /* ボタンも少しピンク寄りに */
+    background: linear-gradient(135deg, #ffb6c7, #ff8fb3);
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    cursor: pointer;
+  }
+  button:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  }
+
+/* 占い結果の表示エリア */
+  #result {
+  background: #ffffff;
+  border-radius: 0.8rem;
+  padding: 0.8rem 1rem;
+  width: min(90vw, 360px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+  font-size: 0.9rem;
+}
+/* 各行の余白 */
+.hex-row {
+  margin: 0.25rem 0;
+}
+  /* 見出し */
+#result-title {
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+}
+
+/* 本卦を強調する行 */
+.main-hex-row .hex-label {
+  font-weight: 600;
+}
+
+/* 本卦のボックス（①フォント大＋太字 ＋ ②色＆枠） */
+.main-hex-box {
+  display: inline-block;
+  margin-left: 0.2rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 0.6rem;
+  background: rgba(255, 193, 140, 0.18); /* うっすら金色の背景 */
+  border: 1px solid #e6792b;             /* 朱×金のイメージ */
+  color: #c25a00;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+/* 変卦は少しだけ控えめに */
+.sub-hex-row .hex-label {
+  font-weight: 500;
+}
+
+#shi-label {
+  font-weight: 500;
+  color: #444;
+}
+
+  .hex-row {
+    margin: 0.2rem 0;
+  }
+
+  .lines {
+    font-family: "Menlo", monospace;
+    letter-spacing: 0.15rem;
+    font-size: 1.1rem;
+  }
+
+  .note {
+    font-size: 0.75rem;
+    color: #888;
+    margin-top: 0.4rem;
+  }
+ /* ▼▼▼ ここに追加すればOK ▼▼▼ */
+   svg text {
+      font-family: 'Zen Antique', serif;
+      fill: #000; /* 黒文字にしたい場合 */
+   }
+/* タブボタン行 */
+#tab-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-bottom: 0.8rem;
+}
+
+.tab-button {
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid ##ff6fae;
+  background: #fff;
+  color: #ff6fae;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.tab-button.active {
+  background: #d88cae;
+  color: #fff;
+}
+
+/* タブの中身 */
+.tab-pane {
+  display: none;
+}
+.tab-pane.active {
+  display: block;
+}
+
+/* 卦を読むパネル */
+.read-panel {
+  width: min(90vw, 360px);
+  margin: 0 auto 1.5rem;
+  background: #ffffffee;
+  border-radius: 0.8rem;
+  padding: 0.9rem 1rem;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+  font-size: 0.9rem;
+}
+.read-panel input[type="number"] {
+  width: 5rem;
+  padding: 0.2rem 0.3rem;
+  margin-left: 0.3rem;
+}
+.read-panel button {
+  margin-top: 0.6rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  border: none;
+  background:#f7a6c2;
+  color: #fff;
+  font-size: 0.85rem;
+}
+
+/* 卦の説明表示 */
+#hex-title {
+  font-weight: 600;
+  margin-top: 0.6rem;
+  margin-bottom: 0.2rem;
+}
+#hex-message {
+  margin-top: 0.3rem;
+  line-height: 1.5;
+}
+.small {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+/* 本卦を目立たせる黄金ボックス */
+#main-hex-box {
+  border: 2px solid #d4a017;   /* 上品な金色の枠 */
+  padding: 10px 14px;
+  border-radius: 10px;
+  display: inline-block;
+  margin: 8px 0 12px;
+  background: rgba(255, 248, 230, 0.5); /* 薄い金の光 */
+  box-shadow: 0 0 12px rgba(212,160,23,0.25); /* 金色の後光 */
+}
+
+/* 本卦の文字（大きめ・太字・金色） */
+#main-hex {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #d4a017; /* 黄金色 */
+}
+
+/* 変卦は控えめに */
+#changed-hex {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #444;
+  opacity: 0.8;
+}
+
+/* タブ共通：非表示・表示の切り替え */
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+/* 卦を読むパネルのレイアウト */
+#read-wrapper {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 16px;
+  padding: 1rem 1.2rem 1.3rem;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  width: min(90vw, 420px);
+  margin: 0 auto 1.5rem;
+  box-sizing: border-box;
+}
+
+.read-section {
+  margin-bottom: 1rem;
+}
+
+.read-section-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+
+/* 今立っている本卦のボックス */
+.read-main-box {
+  border-radius: 12px;
+  border: 2px solid #f39c12;
+  padding: 0.6rem 0.8rem;
+  background: #fff7e6;
+}
+
+.read-main-no {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #d35400;
+  margin-bottom: 0.2rem;
+}
+
+.read-main-name {
+  font-size: 0.95rem;
+}
+
+/* 卦番号から調べるエリア */
+.read-search-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+
+#read-input-no {
+  width: 70px;
+  padding: 0.3rem;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  font-size: 0.9rem;
+}
+
+#read-search-button {
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #ffb347, #ff7e5f);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* 卦の説明テキスト */
+.read-hex-name {
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.read-hex-message {
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+</style>
+
+</head>
+<body>
+  <h1>石投げ易占</h1>
+  <p class="subtitle">宝珠に石を投げて「本卦・変卦」を立てる</p>
+ <!-- ▼ タブボタン -->
+  <div id="tab-buttons">
+    <button class="tab-button active" data-tab="tab-generate">① 卦を立てる</button>
+    <button class="tab-button" data-tab="tab-read">② 卦を読む</button>
+  </div>
+
+ <!-- ▼ タブ①：卦を立てる（今あるUIをこの中に入れる） -->
+  <section id="tab-generate" class="tab-pane active">
+
+<!-- ★① 卦を立てる画面 全体 -->
+<div id="cast-panel" class="tab-panel active">
+
+  <div id="board-container">
+    <svg id="board-svg"></svg>
+    <div id="center-jewel"></div>
+  </div>
+
+  <div id="controls">
+    <button id="throw-btn">石を投げて卦を立てる</button>
+  </div>
+
+   <div id="result">
+    <div id="result-title">まだ卦は立っていません。</div>
+
+    <!-- 本卦を強調表示する行 -->
+    <div class="hex-row main-hex-row">
+      <span class="hex-label">本卦：</span>
+      <span id="hon-label" class="main-hex-box">-</span>
+    </div>
+
+    <!-- 変卦（名前だけシンプルに表示） -->
+    <div class="hex-row sub-hex-row">
+      <span class="hex-label">変卦：</span>
+      <span id="shi-label">-</span>
+    </div>
+
+    <div class="hex-row">
+      本卦の爻：<span id="hon-lines" class="lines">-</span>
+    </div>
+    <div class="hex-row">
+      変卦の爻：<span id="shi-lines" class="lines">-</span>
+    </div>
+    <div class="hex-row">
+      各爻の宮：<span id="line-gua">-</span>
+    </div>
+  </div>
+</div>
+
+<!-- ② 卦を読む画面 -->
+<div id="read-panel" class="tab-panel">
+
+  <div id="read-wrapper">
+
+    <!-- 今立っている本卦を表示するボックス（あとで自動表示させる） -->
+    <div class="read-section">
+      <div class="read-section-title">今立っている本卦</div>
+      <div id="read-current-main" class="read-main-box">
+        <div class="read-main-no">-</div>
+        <div class="read-main-name">まだ卦が立っていません</div>
+      </div>
+    </div>
+
+    <!-- 卦番号から調べるエリア（あとで中身をつなぐ） -->
+    <div class="read-section">
+      <div class="read-section-title">卦番号から調べる</div>
+      <div class="read-search-row">
+        <label for="read-input-no">第</label>
+        <input id="read-input-no" type="number" min="1" max="64" />
+        <span>卦</span>
+        <button id="read-search-button">この卦を読む</button>
+      </div>
+    </div>
+
+    <!-- 卦の説明（いまはダミー） -->
+    <div class="read-section">
+      <div class="read-section-title">卦の説明</div>
+      <div id="read-hex-name" class="read-hex-name">（まだ何も選ばれていません）</div>
+      <div id="read-hex-message" class="read-hex-message">
+        ここに「卦の意味」「開運メッセージ」「アロマ」などを表示していきます。
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+  </section>
+
+ <!-- ▼ タブ②：卦を読む（新しく追加） -->
+  <section id="tab-read" class="tab-pane">
+    <div class="read-panel">
+      <p>番号を入力して卦の意味を読みます。</p>
+
+      <label>
+        卦番号：
+        <input type="number" id="hex-number-input" min="1" max="64" />
+      </label>
+
+      <!-- ①で立てた卦を引き継ぐボタン -->
+      <button id="btn-use-current">①で出た卦を読み込む</button>
+
+      <hr>
+
+      <div id="hex-info">
+        <div id="read-hex-title">ここに「第◯卦 ○○○」</div>
+        <div id="hex-name-reading" class="small"></div>
+        <div id="hex-message"></div>
+        <div id="hex-aroma" class="small"></div>
+      </div>
+    </div>
+  </section>
+</body>
+
+
+  <script>
+let lastMainHexNumber = null;   // ①で立てた本卦の番号を保持
+
+    // 真上から時計回り：乾 → 巽 → 坎 → 艮 → 坤 → 震 → 離 → 兌
+    const TRIGRAM_ORDER = ['乾', '巽', '坎', '艮', '坤', '震', '離', '兌'];
+
+    // 画面上での各卦の「中心角」（数学座標：0=右, 90=上）をラジアンで定義
+    const CENTER_ANGLES = [
+      90,   // 乾（真上）
+      45,   // 巽（右上）
+      0,    // 坎（真右）
+      315,  // 艮（右下）
+      270,  // 坤（真下）
+      225,  // 震（左下）
+      180,  // 離（真左）
+      135   // 兌（左上）
+    ].map(d => d * Math.PI / 180);
+
+    // 6つの石（初爻〜上爻）
+    const STONES = [
+      { line: 1, short: '1', name: '水晶',        color: '#f8f8ff', textColor: '#000000' },
+      { line: 2, short: '2', name: 'ローズQ',     color: '#ffc0cb', textColor: '#ffffff' },
+      { line: 3, short: '3', name: 'ソーダライト', color: '#4169e1', textColor: '#ffffff' },
+      { line: 4, short: '4', name: '翡翠',        color: '#2e8b57', textColor: '#ffffff' },
+      { line: 5, short: '5', name: 'タイガーアイ', color: '#b8860b', textColor: '#ffffff' },
+      { line: 6, short: '6', name: 'アメジスト',  color: '#800080', textColor: '#ffffff' },
+    ];
+
+    // 八卦方位 → 陰陽＋変爻ルール
+    const DIRECTION_TABLE = {
+      '乾': { yinYang: 'yang', changing: true  },
+      '巽': { yinYang: 'yin',  changing: false },
+      '坎': { yinYang: 'yang', changing: false },
+      '艮': { yinYang: 'yang',  changing: false },
+      '坤': { yinYang: 'yin',  changing: true  },
+      '震': { yinYang: 'yang', changing: false },
+      '離': { yinYang: 'yin',  changing: false },
+      '兌': { yinYang: 'yin', changing: false },
+    };
+　// ① 本卦の情報を保存しておく変数（タブ②で使う）
+　let currentMainHex = null;  // 本卦の「番号」
+　let currentMainKey = "";    // 本卦の「パターン文字列」例: "111111"
+
+
+    // 卦テーブル（例）
+    const HEXAGRAM_TABLE = {
+      "111111": { no: 1,  name: "乾為天（けんいてん）" },
+      "000000": { no: 2,  name: "坤為地（こんいち）" },
+      "100010": { no: 3,  name: "水雷屯（すいらいちゅん）" },
+　  "010001": { no: 4,  name: "山水蒙（さんすいもう）" },
+　  "111010": { no: 5,  name: "水天需（すいてんじゅ）" },
+　  "010111": { no: 6,  name: "天水訟（てんすいしょう）" },
+ 　 "010000": { no: 7,  name: "地水師（ちすいし）" },
+ 　 "000010": { no: 8,  name: "水地比（すいちひ）" },
+ 　 "111011": { no: 9,  name: "風天小畜（ふうてんしょうちく）" },
+ 　 "110111": { no:10,  name: "天沢履（てんたくり）" },
+　  "111000": { no:11,  name: "地天泰（ちてんたい）" },
+　  "000111": { no:12,  name: "天地否（てんちひ）" },
+　  "101111": { no:13,  name: "天下同人（てんかどうじん）" },
+　  "111101": { no:14,  name: "火天大勇（かてんたいゆう）" },
+　  "001000": { no:15,  name: "地山謙（ちざんけん）" },
+　  "000100": { no: 16, name: "雷地豫（らいちよ）" },
+ 　 "100110": { no: 17, name: "澤雷隨（たくらいずい）" },
+　  "011001": { no: 18, name: "山風蠱（さんぷうこ）" },
+      "110000": { no: 19, name: "地澤臨（ちたくりん）" },
+      "000011": { no: 20, name: "風地觀（ふうちかん）" },
+      "100101": { no: 21, name: "火雷噬嗑（からいぜいごう）" },
+      "101001": { no: 22, name: "山火賁（さんかひ）" },
+      "000001": { no: 23, name: "山地剝（さんちはく）" },
+      "100000": { no: 24, name: "地雷復（ちらいふく）" },
+      "100111": { no: 25, name: "天雷无妄（てんらいむもう）" },
+　  "111001": { no:26,  name: "山天大畜（さんてんたいちく）" },
+　  "100001": { no:27,  name: "山雷頤（さんらいい）" },
+      "011110": { no:28,  name: "沢風大過（たくふうたいか）" },
+      "010010": { no: 29, name: "坎為水（かんいすい）" },
+      "101101": { no: 30, name: "離為火（りいか）" },
+　  "001110": { no: 31, name: "澤山咸（たくざんかん）" },
+      "011100": { no: 32, name: "雷風恒（らいふうこう）" },
+      "001111": { no: 33, name: "天山遯（てんざんとん）" },
+　  "111100": { no: 34, name: "雷天大壮（らいてんたいそう）" },
+      "000101": { no: 35, name: "火地晋（かちしん）" },
+      "101000": { no: 36, name: "地火明夷（ちかめいい）" },
+      "101011": { no: 37, name: "風火家人（ふうかかじん）" },
+      "110101": { no: 38, name: "火澤睽（かたくけい）" },
+      "001010": { no: 39, name: "水山蹇（すいざんけん）" },
+      "010100": { no: 40, name: "雷水解（らいすいかい）" },
+      "110001": { no: 41, name: "山沢損（さんたくそん）" },
+      "100011": { no: 42, name: "風雷益（ふうらいえき）" },
+      "111110": { no: 43, name: "澤天夬（たくてんかい）" },
+      "011111": { no: 44, name: "天風姤（てんぷうこう）" },
+      "000110": { no: 45, name: "澤地萃（たくちすい）" },
+      "011000": { no: 46, name: "地風升（ちふうしょう）" },
+      "010110": { no: 47, name: "沢水困（たくすいこん）" },
+      "011010": { no: 48, name: "水風井（すいふうせい）" },
+      "101110": { no: 49, name: "沢火革（たくかかく）" },
+      "011101": { no: 50, name: "火風鼎（かふうてい）" },
+      "100100": { no: 51, name: "震為雷（しんいらい）" },
+      "001001": { no: 52, name: "艮為山（ごんいさん）" },
+      "001011": { no: 53, name: "風山漸（ふうざんぜん）" },
+      "110100": { no: 54, name: "雷沢帰妹（らいたくきまい）" },
+      "101100": { no: 55, name: "雷火豊（らいかほう）" },
+      "001101": { no: 56, name: "火山旅（かざんりょ）" },
+      "011011": { no: 57, name: "巽為風（そんいふう）" },
+      "110110": { no: 58, name: "兌為沢（だいたく）" },
+      "010011": { no: 59, name: "風水渙（ふうすいかん）" },
+      "110010": { no: 60, name: "水沢節（すいたくせつ）" },
+      "110011": { no: 61, name: "風沢中孚（ふうたくちゅうふ）" },
+      "001100": { no: 62, name: "雷山小過（らいざんしょうか）" },
+      "101010": { no: 63, name: "水火既済（すいかきせい）" },
+      "010101": { no: 64, name: "火水未済（かすいびせい）" },
+     };
+
+// 直近で立った本卦を覚えておく変数
+let currentMainHexNo   = null;   // 例：25
+let currentMainHexName = "";     // 例：天雷无妄（てんらいむもう）
+let currentMainHexKey  = "";     // 例："100111"
+// ② 「卦を読む」画面の表示を更新する
+function updateReadPanel(hexNo) {
+  const titleEl       = document.getElementById('hex-title');
+  const nameReadingEl = document.getElementById('hex-name-reading');
+  const messageEl     = document.getElementById('hex-message');
+  const aromaEl       = document.getElementById('hex-aroma');
+
+  if (!hexNo) {
+    // 何も選ばれていないときの初期表示
+    titleEl.textContent       = 'ここに「第◯卦 ○○○」';
+    nameReadingEl.textContent = '';
+    messageEl.textContent     = '';
+    aromaEl.textContent       = '';
+    return;
+  }
+
+  const info = getHexInfoByNumber(hexNo);
+
+  if (!info) {
+    // テーブル未登録のとき
+    titleEl.textContent       = `第${hexNo}卦（まだテーブル未登録）`;
+    nameReadingEl.textContent = '';
+    messageEl.textContent     = '';
+    aromaEl.textContent       = '';
+    return;
+  }
+
+  // ★ ここで「第◯卦 ○○○」を表示
+  titleEl.textContent = `第${info.no}卦 ${info.name}`;
+
+  // この下は、あとで「メッセージ」「アロマ」を入れていく場所
+  nameReadingEl.textContent = '';   // 読み仮名など入れたいときに使う
+  messageEl.textContent     = '';   // 卦の意味の文章
+  aromaEl.textContent       = '';   // 対応アロマ など
+}
+
+/* ----------------------------
+   卦番号 → 解説テキストを返す関数
+---------------------------- */
+function getHexagramMeaning(hexNo) {
+  const data = HEXAGRAM_TABLE_NUM[hexNo];
+  if (!data) return null;
+  return data;
+}
+
+/* ----------------------------
+   卦番号で引くためのテーブル
+   （まずは骨組み）
+---------------------------- */
+const HEXAGRAM_TABLE_NUM = {
+  1: {
+    name: "乾為天",
+    message: "天のように高く伸びる力。強さ・創造・発展を象徴します。",
+    aroma: "フランキンセンス など"
+  },
+  2: {
+    name: "坤為地",
+    message: "大地のような受容の力。育てる・受け入れる・支えるエネルギー。",
+    aroma: "ラベンダー など"
+  },
+
+  // ★ 後から 1〜64 卦を追加していけばOK
+};
+
+    const boardContainer = document.getElementById('board-container');
+    const throwBtn = document.getElementById('throw-btn');
+    const honLabel = document.getElementById('hon-label');
+    const shiLabel = document.getElementById('shi-label');
+    const honLinesSpan = document.getElementById('hon-lines');
+    const shiLinesSpan = document.getElementById('shi-lines');
+    const lineGuaSpan = document.getElementById('line-gua');
+    const resultTitle = document.getElementById('result-title');
+
+    const lineNames = ['初爻', '二爻', '三爻', '四爻', '五爻', '上爻'];
+
+    // 角度 angle（ラジアン, 0=右, CCW）をどの卦に属するか判定
+    function angleToGua(angle) {
+      let a = (angle + 2 * Math.PI) % (2 * Math.PI);
+      let bestIdx = 0;
+      let bestDiff = Infinity;
+      for (let i = 0; i < 8; i++) {
+        let c = CENTER_ANGLES[i];
+        let diff = Math.abs(a - c);
+        if (diff > Math.PI) diff = 2 * Math.PI - diff;
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          bestIdx = i;
+        }
+      }
+      return TRIGRAM_ORDER[bestIdx];
+    }
+
+    function linesToKey(lines) {
+      return lines.map(v => v === 'yang' ? '1' : '0').join('');
+    }
+    function linesToGlyph(lines) {
+      return lines.map(v => v === 'yang' ? '⚊' : '⚋').join(' ');
+    }
+
+    function clearStones() {
+      const old = boardContainer.querySelectorAll('.stone');
+      old.forEach(el => el.remove());
+    }
+
+// 卦番号（1〜64）から HEXAGRAM_TABLE の情報を取り出す
+function getHexInfoByNumber(no) {
+  const target = Number(no);        // 文字列を数値に変換
+
+  if (!Number.isFinite(target)) {   // 数値でなければ null
+    return null;
+  }
+
+  for (const key in HEXAGRAM_TABLE) {
+    if (HEXAGRAM_TABLE[key].no === target) {
+      // key（六爻パターン）も一緒に返しておく
+      return { key, ...HEXAGRAM_TABLE[key] };
+    }
+  }
+  return null;
+}
+
+    // 2つの角度 a,b の中間角
+    function midAngle(a, b) {
+      let diff = b - a;
+      if (diff > Math.PI) diff -= 2 * Math.PI;
+      if (diff < -Math.PI) diff += 2 * Math.PI;
+      return a + diff / 2;
+    }
+
+    // SVGで八卦盤を描く
+    function initBoardSvg() {
+      const svg = document.getElementById('board-svg');
+      const NS = 'http://www.w3.org/2000/svg';
+      svg.setAttribute('viewBox', '-100 -100 200 200');
+      svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+    // 背景
+const defs = document.createElementNS(NS, 'defs');
+const grad = document.createElementNS(NS, 'radialGradient');
+grad.setAttribute('id', 'gradBg');
+grad.setAttribute('cx', '50%');
+grad.setAttribute('cy', '50%');
+grad.setAttribute('r', '50%');
+
+// ★ここを白色に変更
+const stop1 = document.createElementNS(NS, 'stop');
+stop1.setAttribute('offset', '0%');
+stop1.setAttribute('stop-color', '#ffffff');   // 白
+
+const stop2 = document.createElementNS(NS, 'stop');
+stop2.setAttribute('offset', '100%');
+stop2.setAttribute('stop-color', '#ffffff');   // 白
+
+grad.appendChild(stop1);
+grad.appendChild(stop2);
+defs.appendChild(grad);
+svg.appendChild(defs);
+
+const bg = document.createElementNS(NS, 'circle');
+bg.setAttribute('cx', 0);
+bg.setAttribute('cy', 0);
+bg.setAttribute('r', 95);
+bg.setAttribute('fill', 'url(#gradBg)');
+svg.appendChild(bg);
+
+
+      const outerR = 90;
+      const innerR = 40;
+
+      // 八角形の頂点角（扇の境界）
+      const boundaryAngles = [];
+      for (let i = 0; i < 8; i++) {
+        const a = CENTER_ANGLES[i];
+        const b = CENTER_ANGLES[(i + 1) % 8];
+        boundaryAngles.push(midAngle(a, b));
+      }
+
+      const outerPts = [];
+      const innerPts = [];
+      boundaryAngles.forEach(a => {
+        outerPts.push(
+          (outerR * Math.cos(a)).toFixed(2) + ',' +
+          (-outerR * Math.sin(a)).toFixed(2)
+        );
+        innerPts.push(
+          (innerR * Math.cos(a)).toFixed(2) + ',' +
+          (-innerR * Math.sin(a)).toFixed(2)
+        );
+      });
+
+　 const VERMILION = '#d94b1f'; // 朱色を定数にしておくと楽です
+      const polyOuter = document.createElementNS(NS, 'polygon');
+      polyOuter.setAttribute('points', outerPts.join(' '));
+      polyOuter.setAttribute('fill', 'none');
+      polyOuter.setAttribute('stroke',  VERMILION);// 朱色（外枠）
+      polyOuter.setAttribute('stroke-width', '3');
+      svg.appendChild(polyOuter);
+
+      const polyInner = document.createElementNS(NS, 'polygon');
+      polyInner.setAttribute('points', innerPts.join(' '));
+      polyInner.setAttribute('fill', 'none');
+      polyInner.setAttribute('stroke',  VERMILION);// 朱色
+      polyInner.setAttribute('stroke-width', '3');
+      svg.appendChild(polyInner);
+
+      // 放射状の仕切り線
+      boundaryAngles.forEach(a => {
+  // 内側八角形の少し外から始める（内側半径 = innerR）
+  const startR = innerR + 1;     // ← 好みで調整できる (“4px外側”くらい)
+  const endR = outerR;
+
+  const x1 = startR * Math.cos(a);
+  const y1 = -startR * Math.sin(a);
+
+  const x2 = endR * Math.cos(a);
+  const y2 = -endR * Math.sin(a);
+
+  const line = document.createElementNS(NS, 'line');
+  line.setAttribute('x1', x1.toFixed(2));
+  line.setAttribute('y1', y1.toFixed(2));
+  line.setAttribute('x2', x2.toFixed(2));
+  line.setAttribute('y2', y2.toFixed(2));
+  line.setAttribute('stroke', VERMILION); // 色は朱色に合わせる
+  line.setAttribute('stroke-width', '3');
+  svg.appendChild(line);
+});
+
+
+      // 各扇の中央に赤い節線＋卦文字
+      for (let i = 0; i < 8; i++) {
+        const a = CENTER_ANGLES[i];
+
+      
+
+        // 卦文字
+        const textR = 67;
+        const tx = textR * Math.cos(a);
+        const ty = -textR * Math.sin(a);
+        const t = document.createElementNS(NS, 'text');
+        t.setAttribute('x', tx.toFixed(2));
+        t.setAttribute('y', ty.toFixed(2));
+        t.setAttribute('fill', '#222');
+        t.setAttribute('font-size', '14');
+        t.setAttribute('text-anchor', 'middle');
+        t.setAttribute('dominant-baseline', 'middle');
+        t.textContent = TRIGRAM_ORDER[i];
+        svg.appendChild(t);
+      }
+
+      // 中央の土台円
+      const midCircle = document.createElementNS(NS, 'circle');
+      midCircle.setAttribute('cx', 0);
+      midCircle.setAttribute('cy', 0);
+      midCircle.setAttribute('r', innerR - 6);
+      midCircle.setAttribute('fill', '#ffffff' );
+      midCircle.setAttribute('stroke', '#ffffff');
+      midCircle.setAttribute('stroke-width', '2');
+      svg.appendChild(midCircle);
+    }
+
+    // 石を「初爻→上爻」の順に1つずつ出す
+    function throwStones() {
+      clearStones();
+
+      const rect = boardContainer.getBoundingClientRect();
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+
+      const lines = [];
+      let index = 0;
+
+      function placeNextStone() {
+        if (index >= STONES.length) {
+
+          // 卦計算
+          lines.sort((a, b) => a.line - b.line);
+
+          const hon = lines.map(l => l.yinYang);
+          const shi = lines.map(l => {
+            if (!l.changing) return l.yinYang;
+            return l.yinYang === 'yang' ? 'yin' : 'yang';
+          });
+
+          const honKey = linesToKey(hon);
+          const shiKey = linesToKey(shi);
+
+          const honInfo = HEXAGRAM_TABLE[honKey];
+          const shiInfo = HEXAGRAM_TABLE[shiKey];
+　
+　　// 本卦をタブ②用の変数に保存
+　　currentMainKey = honKey;
+　　currentMainHex = honInfo ? honInfo.no : null;
+
+
+          /* ★ 追加：本卦の番号をタブ②用に保存 ★ */
+          lastMainHexNumber = honInfo ? honInfo.no : null;
+
+          honLinesSpan.textContent = linesToGlyph(hon);
+          shiLinesSpan.textContent = linesToGlyph(shi);
+
+          if (honInfo) {
+            honLabel.textContent = `第${honInfo.no}卦 ${honInfo.name}`;
+
+ // ★本卦をグローバル変数に保存
+  currentMainHexNo   = honInfo.no;
+  currentMainHexName = honInfo.name;
+  currentMainHexKey  = honKey;
+
+  // ★②画面の「今立っている本卦」表示を更新
+ // ★ ②タブに「今立っている本卦」を表示するための関数
+function updateReadPanelFromCurrentHex() {
+  const box = document.getElementById('read-current-main');
+  if (!box) return; // 念のため
+
+  const noEl   = box.querySelector('.read-main-no');
+  const nameEl = box.querySelector('.read-main-name');
+  if (!noEl || !nameEl) return;
+
+  if (currentMainHexNo == null) {
+    // まだ卦が立っていないとき
+    noEl.textContent   = '-';
+    nameEl.textContent = 'まだ卦が立っていません';
+  } else {
+    noEl.textContent   = `第${currentMainHexNo}卦`;
+    nameEl.textContent = currentMainHexName || '';
+  }
+}
+
+
+ updateReadPanelFromCurrentHex();
+          } else {
+            honLabel.textContent = `パターン ${honKey}（テーブル未登録）`;
+　　currentMainHexNo = null;
+          }
+
+          if (shiInfo) {
+            shiLabel.textContent = `第${shiInfo.no}卦 ${shiInfo.name}`;
+          } else {
+            shiLabel.textContent = `パターン ${shiKey}（テーブル未登録）`;
+          }
+
+          const guaDesc = lines
+            .map(l => `${lineNames[l.line - 1]}-${l.gua}`)
+            .join(' ／ ');
+          lineGuaSpan.textContent = guaDesc;
+
+          resultTitle.textContent = '卦が立ちました。';
+          return;
+        }
+
+        const stone = STONES[index];
+
+        const minR = rect.width * 0.20;
+        const maxR = rect.width * 0.40;
+        const radius = minR + Math.random() * (maxR - minR);
+        const angle  = Math.random() * Math.PI * 2;
+
+        const x = centerX + radius * Math.cos(angle);
+        const y = centerY - radius * Math.sin(angle); // 画面上向きに合わせる
+
+        const dx = x - centerX;
+        const dy = centerY - y; // 上が正
+        const angForJudge = Math.atan2(dy, dx);
+
+        const gua  = angleToGua(angForJudge);
+        const info = DIRECTION_TABLE[gua];
+
+        lines.push({
+          line: stone.line,
+          gua,
+          yinYang: info.yinYang,
+          changing: info.changing
+        });
+
+        const el = document.createElement('div');
+        el.className = 'stone';
+        el.style.left = (x - 13) + 'px';
+        el.style.top  = (y - 13) + 'px';
+        el.style.backgroundColor = stone.color;
+        el.style.color = stone.textColor;
+        el.textContent = stone.short;
+        boardContainer.appendChild(el);
+
+        requestAnimationFrame(() => {
+          el.style.transform = 'scale(1.08)';
+          setTimeout(() => {
+            el.style.transform = 'scale(1.0)';
+          }, 150);
+        });
+
+        index++;
+        setTimeout(placeNextStone, 400);
+      }
+
+      placeNextStone();
+    }
+
+    initBoardSvg();
+    throwBtn.addEventListener('click', throwStones);
+
+
+/* ----------------------------------
+   新しいタブ切り替え処理
+---------------------------------- */
+const tabButtons = document.querySelectorAll('.tab-button');
+const tabPanes   = document.querySelectorAll('.tab-pane');
+
+tabButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const targetId = btn.getAttribute('data-tab');
+
+    // タブボタンの active 切り替え
+    tabButtons.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    // パネル切り替え
+    tabPanes.forEach(pane => {
+      if (pane.id === targetId) pane.classList.add('active');
+      else pane.classList.remove('active');
+    });
+
+    // ②タブが開かれたとき、本卦を表示
+    if (targetId === 'tab-read') {
+      updateReadPanelFromCurrentHex();
+    }
+  });
+});
+
+/* ----------------------------------
+   「①で出た卦を読み込む」ボタン処理
+---------------------------------- */
+
+// ボタンと入力欄、タイトル要素を取得
+const btnUseLastHex = document.getElementById('btn-use-current');
+const inputHex      = document.getElementById('hex-number-input');
+const hexTitle      = document.getElementById('read-hex-title');
+
+btnUseLastHex.addEventListener('click', () => {
+  // まず、①で本卦が立っているかチェック
+  if (currentMainHexNo == null) {
+    alert('まだ①で卦を立てていません。先に石を投げてください。');
+    return;
+  }
+
+  // 入力欄に本卦番号をセット
+  inputHex.value = currentMainHexNo;
+
+  // 卦テーブルから情報を取り出して表示
+  const info = getHexInfoByNumber(currentMainHexNo);
+  if (info) {
+    hexTitle.textContent = `第${info.no}卦 ${info.name}`;
+  } else {
+    hexTitle.textContent = `卦番号「${currentMainHexNo}」はテーブル未登録です。`;
+  }
+});
+
+  </script>
+</body>
+</html>
+
