@@ -464,6 +464,20 @@
   white-space: pre-wrap;
   line-height: 1.6; /* 1.5〜1.7で調整可能 */
 }
+#hexagramImageWrapper {
+  text-align: center;
+  margin: 12px 0 16px;
+}
+
+#hexagramImage {
+  max-width: 100%;
+  max-height: 260px;   /* お好みで調整 */
+  width: auto;
+  height: auto;
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
 
 </style>
 
@@ -544,7 +558,12 @@
       </div>
     </div>
 
-    <!-- 卦の説明（いまはダミー） -->
+<!-- 卦のイラスト表示エリア -->
+<div id="hexagramImageWrapper">
+  <img id="hexagramImage" src="" alt="卦イラスト" />
+</div>
+
+    <!-- 卦の説明 -->
     <div class="read-section">
       <div class="read-section-title">卦の説明</div>
       <div id="read-hex-name" class="read-hex-name">（まだ何も選ばれていません）</div>
@@ -748,63 +767,68 @@ function updateReadPanel(hexNo) {
   const nameReadingEl = document.getElementById('hex-name-reading');
   const messageEl     = document.getElementById('hex-message');
   const aromaEl       = document.getElementById('hex-aroma');
+  const img           = document.getElementById('hexagramImage');
 
   if (!hexNo) {
     // 何も選ばれていないときの初期表示
-    titleEl.textContent       = 'ここに「第◯卦 ○○○」';
-    nameReadingEl.textContent = '';
-    messageEl.textContent     = '';
-    aromaEl.textContent       = '';
+    if (titleEl)       titleEl.textContent       = 'ここに「第◯卦 ○○○」';
+    if (nameReadingEl) nameReadingEl.textContent = '';
+    if (messageEl)     messageEl.textContent     = '';
+    if (aromaEl)       aromaEl.textContent       = '';
+    if (img)           img.style.display = 'none';
     return;
   }
 
-  // 卦番号→詳細データ（あとで64卦ぶん入れる）
+  // 卦番号→詳細データ（64卦のテーブルから）
   const detail = getHexagramMeaning(hexNo);
-  // 六爻パターンから取れる基本情報（念のため名前の補完用）
+  // 六爻のパターンから取れる基本情報（念のため名前の補完用）
   const infoFromHex = getHexInfoByNumber(hexNo);
 
   if (!detail && !infoFromHex) {
     // テーブル未登録のとき
-    titleEl.textContent       = `第${hexNo}卦（まだテーブル未登録）`;
-    nameReadingEl.textContent = '';
-    messageEl.textContent     = '';
-    aromaEl.textContent       = '';
+    if (titleEl)       titleEl.textContent       = `第${hexNo}卦（まだテーブル未登録）`;
+    if (nameReadingEl) nameReadingEl.textContent = '';
+    if (messageEl)     messageEl.textContent     = '';
+    if (aromaEl)       aromaEl.textContent       = '';
+    if (img)           img.style.display = 'none';
     return;
   }
 
   const displayName =
     (detail && detail.name) ||
     (infoFromHex && infoFromHex.name) ||
-    "";
+    '';
 
   const displayNo = (detail && detail.no) || hexNo;
 
   // タイトル（第◯卦 ○○○）
-  titleEl.textContent = `第${displayNo}卦 ${displayName}`;
-
-  // ★ここに、石投げ易占カード解説書の
-  // 「1.本卦の説明〜4.開運アロマ」までの長文をそのまま表示
-  if (detail && detail.text) {
-    messageEl.textContent = detail.text;
-  } else if (detail && detail.message) {
-    // text ではなく message というキー名にしたい場合の保険
-    messageEl.textContent = detail.message;
-  } else {
-    messageEl.textContent = '';
+  if (titleEl) {
+    titleEl.textContent = `第${displayNo}卦 ${displayName}`;
   }
 
-  // 今回は「開運アロマ」も text の中に含める想定なので空でOK
-  aromaEl.textContent = '';
-}
+  // ★ イラストの切り替え（detail.image があれば表示）
+  if (img) {
+    if (detail && detail.image) {
+      img.src = detail.image;
+      img.alt = displayName;
+      img.style.display = 'block';
+    } else {
+      img.style.display = 'none';
+    }
+  }
 
-/* ----------------------------
-   「①で立てた本卦」を ②画面に反映する
----------------------------- */
-function updateReadPanelFromCurrentHex() {
-  if (!currentMainHexNo) {
-    updateReadPanel(null);
-  } else {
-    updateReadPanel(currentMainHexNo);
+  // 解説テキスト
+  if (messageEl) {
+    if (detail && (detail.text || detail.message)) {
+      messageEl.textContent = detail.text || detail.message;
+    } else {
+      messageEl.textContent = '';
+    }
+  }
+
+  // 今回は aroma は text 内に含める想定なので空でOK
+  if (aromaEl) {
+    aromaEl.textContent = '';
   }
 }
 
@@ -815,6 +839,7 @@ function getHexagramMeaning(hexNo) {
   return HEXAGRAM_TABLE_NUM[hexNo] || null;
 }
 
+
 /* ----------------------------
    卦番号で引くためのテーブル
    ★ここに 1〜64卦を順番に入れていきます
@@ -824,6 +849,7 @@ const HEXAGRAM_TABLE_NUM = {
 1: {
   no: 1,
   name: "乾為天（けんいてん）",
+  image: "images/01_乾為天.jpg", 
   message: `
 【1. 本卦の説明】
 乾為天は「天」が上下に重なる、純粋な「天のエネルギー」の卦です。昇り龍のような創造力・成功運・リーダーシップを象徴し、強運とスピード感をもって飛躍していく力を授けます。一方で、やり過ぎ・高望み・自信過剰になりやすく、そのバランスをどう保つかがテーマになります。
@@ -3067,10 +3093,10 @@ message: `
 無理に場を仕切ろうとせず、謙虚な態度を意識しましょう。
 
 【4. 開運アロマ】
-バジル × グリーンマンデリン  
+バジル × グリーンマンダリン  
 
 バジルは冷静な判断力を与え、やり過ぎそうになった心に「ちょっと待って」とブレーキをかけてくれる香り。  
-グリーンマンデリンは明るさと爽やかさをもたらし、控えめでありながら前向きに進む勇気をサポートします。  
+グリーンマンダリンは明るさと爽やかさをもたらし、控えめでありながら前向きに進む勇気をサポートします。  
 雷山小過の「慎重さと節度」「小さな一歩を大切にする」エネルギーを高め、  
 無理のないペースで歩み続けるためのバランス感覚を整えてくれるブレンドです。
 `
