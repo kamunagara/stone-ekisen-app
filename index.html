@@ -815,6 +815,9 @@ function updateReadPanel(hexNo) {
 
   const displayNo = (detail && detail.no) || hexNo;
 
+ // ★ここにデバッグ用ログを追加！
+  console.log("detail.image =", detail && detail.image, "hexNo =", hexNo);
+
   // ▼ タイトル（第◯卦 ○○○）
   if (titleEl) {
     titleEl.textContent = `第${displayNo}卦 ${displayName}`;
