@@ -215,7 +215,7 @@
 .tab-button {
   padding: 0.4rem 0.9rem;
   border-radius: 999px;
-  border: 1px solid ##ff6fae;
+  border: 1px solid #ff6fae;
   background: #fff;
   color: #ff6fae;
   font-size: 0.85rem;
@@ -602,6 +602,10 @@
       <div id="hex-name-reading" class="small"></div>
       <div id="hex-message"></div>
       <div id="hex-aroma" class="small"></div>
+<!-- ここを追加 👇 -->
+<div class="hex-image-wrapper">
+  <img id="hex-image" src="" alt="" style="max-width:100%; height:auto; display:none;" />
+</div>
     </div>
   </div>
 
@@ -740,22 +744,12 @@ let currentMainHexNo   = null;   // 例：25
 let currentMainHexName = "";     // 例：天雷无妄（てんらいむもう）
 let currentMainHexKey  = "";     // 例："100111"
 
-// ②タブ用：「今立っている本卦」ボックスだけを書き換える
-function updateReadPanelFromCurrentHex() {
-  const box = document.getElementById('read-current-main');
-  if (!box) return;
 
-  const noEl   = box.querySelector('.read-main-no');
-  const nameEl = box.querySelector('.read-main-name');
-
-  if (!currentMainHexNo) {
-    if (noEl)   noEl.textContent   = '-';
-    if (nameEl) nameEl.textContent = 'まだ卦が立っていません';
-    return;
-  }
-
-  if (noEl)   noEl.textContent   = `第${currentMainHexNo}卦`;
-  if (nameEl) nameEl.textContent = currentMainHexName || '';
+/* ----------------------------
+   卦番号 → 解説テキストを返す関数
+---------------------------- */
+function getHexagramMeaning(hexNo) {
+  return HEXAGRAM_TABLE_NUM[hexNo] || null;
 }
 
 /* ----------------------------
@@ -767,21 +761,33 @@ function updateReadPanel(hexNo) {
   const nameReadingEl = document.getElementById('hex-name-reading');
   const messageEl     = document.getElementById('hex-message');
   const aromaEl       = document.getElementById('hex-aroma');
-  const img           = document.getElementById('hexagramImage');
 
+  // 上のエリアの画像（卦のイラスト）
+  const imgTop    = document.getElementById('hexagramImage');
+  // 解説ボックスの中の画像（hex-image）
+  const imgBottom = document.getElementById('hex-image');
+
+  // ▼ 何も選ばれていないときの表示
   if (!hexNo) {
-    // 何も選ばれていないときの初期表示
     if (titleEl)       titleEl.textContent       = 'ここに「第◯卦 ○○○」';
     if (nameReadingEl) nameReadingEl.textContent = '';
     if (messageEl)     messageEl.textContent     = '';
     if (aromaEl)       aromaEl.textContent       = '';
-    if (img)           img.style.display = 'none';
+
+    if (imgTop) {
+      imgTop.src = '';
+      imgTop.style.display = 'none';
+    }
+    if (imgBottom) {
+      imgBottom.src = '';
+      imgBottom.style.display = 'none';
+    }
     return;
   }
 
-  // 卦番号→詳細データ（64卦のテーブルから）
-  const detail = getHexagramMeaning(hexNo);
-  // 六爻のパターンから取れる基本情報（念のため名前の補完用）
+  // 卦番号 → テーブルの詳細データ
+  const detail      = getHexagramMeaning(hexNo);
+  // 卦番号 → パターンから取れる基本情報（名前補完用）
   const infoFromHex = getHexInfoByNumber(hexNo);
 
   if (!detail && !infoFromHex) {
@@ -790,7 +796,15 @@ function updateReadPanel(hexNo) {
     if (nameReadingEl) nameReadingEl.textContent = '';
     if (messageEl)     messageEl.textContent     = '';
     if (aromaEl)       aromaEl.textContent       = '';
-    if (img)           img.style.display = 'none';
+
+    if (imgTop) {
+      imgTop.src = '';
+      imgTop.style.display = 'none';
+    }
+    if (imgBottom) {
+      imgBottom.src = '';
+      imgBottom.style.display = 'none';
+    }
     return;
   }
 
@@ -801,43 +815,54 @@ function updateReadPanel(hexNo) {
 
   const displayNo = (detail && detail.no) || hexNo;
 
-  // タイトル（第◯卦 ○○○）
+  // ▼ タイトル（第◯卦 ○○○）
   if (titleEl) {
     titleEl.textContent = `第${displayNo}卦 ${displayName}`;
   }
+  if (nameReadingEl) {
+    nameReadingEl.textContent = displayName;
+  }
 
-  // ★ イラストの切り替え（detail.image があれば表示）
-  if (img) {
-    if (detail && detail.image) {
-      img.src = detail.image;
-      img.alt = displayName;
-      img.style.display = 'block';
-    } else {
-      img.style.display = 'none';
+  // ▼ 画像の反映処理（上と下の両方に同じ画像を出す）
+  const imgSrc = detail && detail.image ? detail.image : '';
+
+  if (imgSrc) {
+    if (imgTop) {
+      imgTop.src = imgSrc;
+      imgTop.alt = displayName;
+      imgTop.style.display = 'block';
+    }
+    if (imgBottom) {
+      imgBottom.src = imgSrc;
+      imgBottom.alt = displayName;
+      imgBottom.style.display = 'block';
+    }
+  } else {
+    if (imgTop) {
+      imgTop.src = '';
+      imgTop.style.display = 'none';
+    }
+    if (imgBottom) {
+      imgBottom.src = '';
+      imgBottom.style.display = 'none';
     }
   }
 
-  // 解説テキスト
+  // ▼ 解説テキスト
   if (messageEl) {
     if (detail && (detail.text || detail.message)) {
-      messageEl.textContent = detail.text || detail.message;
+      messageEl.textContent = (detail.text || detail.message).trim();
     } else {
       messageEl.textContent = '';
     }
   }
 
-  // 今回は aroma は text 内に含める想定なので空でOK
+  // aroma は今回はテキスト内に含めているので空でOK
   if (aromaEl) {
     aromaEl.textContent = '';
   }
 }
 
-/* ----------------------------
-   卦番号 → 解説テキストを返す関数
----------------------------- */
-function getHexagramMeaning(hexNo) {
-  return HEXAGRAM_TABLE_NUM[hexNo] || null;
-}
 
 
 /* ----------------------------
