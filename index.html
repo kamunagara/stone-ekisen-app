@@ -517,6 +517,128 @@
   color: #c25a00;   /* 落ち着いた金茶色 */
 }
 
+#board { position: relative; }
+
+/* エフェクト全体のレイヤー */
+#harae-layer{
+  position:absolute; inset:0;
+  pointer-events:none;
+  overflow:hidden;
+  opacity:0;
+}
+
+/* 発動 */
+#harae-layer.is-on { opacity:1; }
+
+/* 宝珠の光：中心からふわっと広がる */
+#harae-layer .tamahikari{
+  position:absolute; inset:-20%;
+  background: radial-gradient(circle,
+    rgba(255,255,255,0.95) 0%,
+    rgba(255,248,220,0.65) 18%,   /* ほんのり金/神聖 */
+    rgba(255,255,255,0.25) 40%,
+    rgba(255,255,255,0) 70%);
+  transform: scale(0.75);
+  opacity:0;
+}
+
+#harae-layer.is-on .tamahikari{
+  animation: tamahikari 1.05s ease-out forwards;
+}
+
+@keyframes tamahikari{
+  0%   { opacity:0; transform:scale(0.65); filter: blur(2px); }
+  35%  { opacity:1; transform:scale(1.00); filter: blur(0px); }
+  100% { opacity:0; transform:scale(1.25); filter: blur(1px); }
+}
+
+/* 一瞬の白フラッシュ（祓いの“パン”） */
+#harae-layer .flash{
+  position:absolute; inset:0;
+  background: rgba(255,255,255,0.9);
+  opacity:0;
+}
+#harae-layer.is-on .flash{
+  animation: flash 0.35s ease-out forwards;
+}
+@keyframes flash{
+  0% { opacity:0; }
+  25%{ opacity:0.45; }
+  100%{ opacity:0; }
+}
+
+/* 紙垂（しで）風：2本がひらひら降りる */
+#harae-layer .shide{
+  position:absolute;
+  top:-30%;
+  width: 22%;
+  height: 160%;
+  background: linear-gradient(to bottom,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,0.9) 20%,
+    rgba(255,255,255,0.9) 80%,
+    rgba(255,255,255,0) 100%);
+  clip-path: polygon(40% 0%, 60% 0%, 60% 18%, 50% 25%, 60% 32%, 60% 50%, 50% 58%, 60% 66%, 60% 84%, 40% 84%, 40% 66%, 50% 58%, 40% 50%, 50% 42%, 40% 32%, 50% 25%, 40% 18%);
+  opacity:0;
+  filter: blur(0.4px);
+}
+
+#harae-layer .shide-a{ left:18%; transform: rotate(-6deg); }
+#harae-layer .shide-b{ right:18%; transform: rotate(6deg); }
+
+#harae-layer.is-on .shide-a{
+  animation: shideDropA 0.9s ease-out forwards;
+}
+#harae-layer.is-on .shide-b{
+  animation: shideDropB 0.9s ease-out forwards;
+}
+
+@keyframes shideDropA{
+  0%{ opacity:0; transform: translateY(-20%) rotate(-10deg); }
+  20%{ opacity:0.85; }
+  100%{ opacity:0; transform: translateY(18%) rotate(8deg); }
+}
+@keyframes shideDropB{
+  0%{ opacity:0; transform: translateY(-22%) rotate(10deg); }
+  20%{ opacity:0.85; }
+  100%{ opacity:0; transform: translateY(16%) rotate(-8deg); }
+}
+
+/* キラ粒（宝珠の霊光） */
+#harae-layer .sparkles{
+  position:absolute; inset:0;
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,0.95) 0 2px, rgba(255,255,255,0) 3px),
+    radial-gradient(circle, rgba(255,248,220,0.9) 0 1.5px, rgba(255,255,255,0) 3px),
+    radial-gradient(circle, rgba(255,255,255,0.85) 0 1px, rgba(255,255,255,0) 3px);
+  background-size: 160px 160px, 220px 220px, 120px 120px;
+  background-position: 20% 30%, 70% 40%, 45% 75%;
+  opacity:0;
+}
+
+#harae-layer.is-on .sparkles{
+  animation: sparkles 1.0s ease-out forwards;
+}
+
+@keyframes sparkles{
+  0%   { opacity:0; transform: scale(0.98); filter: blur(0.3px); }
+  30%  { opacity:0.9; }
+  100% { opacity:0; transform: scale(1.04); filter: blur(0.6px); }
+}
+
+/* 端末に優しい：動き苦手な人のため */
+@media (prefers-reduced-motion: reduce){
+  #harae-layer.is-on .tamahikari,
+  #harae-layer.is-on .flash,
+  #harae-layer.is-on .shide-a,
+  #harae-layer.is-on .shide-b,
+  #harae-layer.is-on .sparkles{
+    animation: none;
+    opacity: 0;
+  }
+}
+
+
 </style>
 
 </head>
@@ -538,7 +660,18 @@
   <div id="board-container">
     <svg id="board-svg"></svg>
     <div id="center-jewel"></div>
+<!-- ★ 浄化エフェクト（神社×宝珠） -->
+  <div id="harae-layer">
+    <div class="tamahikari"></div>
+    <div class="flash"></div>
+    <div class="shide shide-a"></div>
+    <div class="shide shide-b"></div>
+    <div class="sparkles"></div>
   </div>
+  </div>
+
+<!-- 音（任意） -->
+<audio id="purify-sound" preload="auto" src="purify.mp3"></audio>
 
   <div id="controls">
     <button id="throw-btn">石を投げて卦を立てる</button>
@@ -3714,6 +3847,7 @@ HEXAGRAM_TABLE_NUM[64].image = "images/64_火水未済.jpg";
     const boardContainer = document.getElementById('board-container');
     const throwBtn = document.getElementById('throw-btn');
     const clearBtn = document.getElementById('clear-btn');   // ★追加
+    const haraeLayer = document.getElementById("harae-layer");
     const honLabel = document.getElementById('hon-label');
     const shiLabel = document.getElementById('shi-label');
     const honLinesSpan = document.getElementById('hon-lines');
@@ -4063,7 +4197,19 @@ function updateReadPanelFromCurrentHex() {
    
 if (clearBtn) {
   clearBtn.addEventListener('click', () => {
+
+   // ① 祓いエフェクト
+  haraeLayer.classList.remove("is-on");
+  void haraeLayer.offsetWidth; // 再発火
+  haraeLayer.classList.add("is-on");
+
     clearStones();     // 盤の石を消す
+
+// ③ 余韻で消す
+  setTimeout(() => {
+    haraeLayer.classList.remove("is-on");
+  }, 1100);
+  
     clearReadPanel();  // 解説も全部クリア
   });
 }
