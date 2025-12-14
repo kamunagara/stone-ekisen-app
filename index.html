@@ -638,6 +638,52 @@
   }
 }
 
+/* ===== ① 宝珠が一瞬強く光る ===== */
+#center-jewel.jewel-glow {
+  animation: jewelGlow 0.8s ease-out;
+}
+
+#center-jewel.jewel-glow{
+  animation: jewelGlow 0.8s ease-out;
+  /* ここが“神気”の光 */
+  filter: drop-shadow(0 0 10px rgba(244,197,66,0.85))
+          drop-shadow(0 0 18px rgba(255,255,255,0.55));
+}
+
+@keyframes jewelGlow {
+  0%   { transform: translate(-50%, -50%) scale(1);   box-shadow: 0 0 0 rgba(244,197,66,0); }
+  35%  { transform: translate(-50%, -50%) scale(1.06); box-shadow: 0 0 22px rgba(244,197,66,0.75); }
+  100% { transform: translate(-50%, -50%) scale(1);   box-shadow: 0 0 0 rgba(244,197,66,0); }
+}
+
+/* ===== ② 浄化完了メッセージ（小さく） ===== */
+#purify-toast{
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.85);
+  border: 1px solid rgba(212,175,55,0.45);
+  font-size: 0.78rem;
+  color: #7a5c28;
+  letter-spacing: 0.03em;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#purify-toast.show {
+  animation: toastFade 1.1s ease-out forwards;
+}
+
+@keyframes toastFade{
+  0%   { opacity: 0; transform: translateX(-50%) translateY(6px); }
+  20%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+  80%  { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+}
+
 
 </style>
 
@@ -668,6 +714,8 @@
     <div class="shide shide-b"></div>
     <div class="sparkles"></div>
   </div>
+  <!-- ★追加：浄化完了メッセージ -->
+<div id="purify-toast" aria-hidden="true">祓い清められました</div>
   </div>
 
 <!-- 音（任意） -->
@@ -3847,7 +3895,13 @@ HEXAGRAM_TABLE_NUM[64].image = "images/64_火水未済.jpg";
     const boardContainer = document.getElementById('board-container');
     const throwBtn = document.getElementById('throw-btn');
     const clearBtn = document.getElementById('clear-btn');   // ★追加
+    // ===== 浄化演出で使う要素（★追加）=====
     const haraeLayer = document.getElementById("harae-layer");
+    const jewel       = document.getElementById('center-jewel');
+    const toast       = document.getElementById('purify-toast');
+    if (toast) toast.classList.remove("show");
+    const purifySound = document.getElementById('purify-sound');
+    let purifyTimer   = null;
     const honLabel = document.getElementById('hon-label');
     const shiLabel = document.getElementById('shi-label');
     const honLinesSpan = document.getElementById('hon-lines');
@@ -4195,22 +4249,57 @@ function updateReadPanelFromCurrentHex() {
     initBoardSvg();
     throwBtn.addEventListener('click', throwStones);
    
-if (clearBtn) {
+   if (clearBtn) {
   clearBtn.addEventListener('click', () => {
 
-   // ① 祓いエフェクト
-  haraeLayer.classList.remove("is-on");
-  void haraeLayer.offsetWidth; // 再発火
-  haraeLayer.classList.add("is-on");
+    // ① 祓いエフェクト（安全に）
+    if (haraeLayer) {
+      haraeLayer.classList.remove("is-on");
+      void haraeLayer.offsetWidth; // 再発火
+      haraeLayer.classList.add("is-on");
+    }
 
-    clearStones();     // 盤の石を消す
+       // ① 宝珠が一瞬強く光る（安全に）
+    if (jewel) {
+      jewel.classList.remove("jewel-glow");
+      void jewel.offsetWidth; // 再発火
+      jewel.classList.add("jewel-glow");
 
-// ③ 余韻で消す
+       // ★追加：光ったら元に戻す
   setTimeout(() => {
-    haraeLayer.classList.remove("is-on");
-  }, 1100);
-  
-    clearReadPanel();  // 解説も全部クリア
+    jewel.classList.remove("jewel-glow");
+  }, 850);
+    }
+
+    // （任意）音
+    if (purifySound) {
+      purifySound.currentTime = 0;
+      purifySound.play().catch(() => {});
+    }
+
+    // ② 浄化完了メッセージ（小さく）
+    if (toast) {
+      toast.classList.remove("show");
+      void toast.offsetWidth; // 再発火
+      toast.classList.add("show");
+     setTimeout(() => {
+  if (toast) toast.classList.remove("show");
+}, 1300);
+
+    }
+
+    // ③ 一拍置いてから石が消える（“一拍”を少し長めに）
+    if (purifyTimer) clearTimeout(purifyTimer);
+    purifyTimer = setTimeout(() => {
+      clearStones();     // 盤の石を消す
+      clearReadPanel();  // 解説も全部クリア
+    }, 700); // ←ここを好みで 600〜900 に調整
+
+ // ★エフェクトが終わったらOFF（タブ移動で再発火しないように）
+setTimeout(() => {
+  if (haraeLayer) haraeLayer.classList.remove("is-on");
+}, 1200);
+
   });
 }
 
@@ -4275,6 +4364,8 @@ function clearReadPanel() {
   // ②側（下の「卦を読む」ブロック）
   const title2    = document.getElementById("read-hex-title");
   const name2     = document.getElementById("hex-name-reading");
+  const keyword2  = document.getElementById("hex-keyword"); 
+  if (keyword2) keyword2.textContent = ""; 
   const msg2      = document.getElementById("hex-message");
   const aroma2    = document.getElementById("hex-aroma");
   const imgBottom = document.getElementById("hex-image");
